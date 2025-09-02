@@ -14,3 +14,11 @@ Neo's Tools of Python
 uv init
 uv run ntpy
 ```
+
+## foo
+
+i eight some pi
+
+$$
+\sqrt{-1},2^{3},\sum,\pi
+$$
