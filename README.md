@@ -1,12 +1,16 @@
-# NT.py
+# nt25.py
 
-Neo's Tools of Python
+Neo's Tools of Python in 2025
 
 ## plans
 
-- fio
-- calc
-- draw
+- [x] fio
+- [x] calc
+- [x] draw
+- [ ] mysql
+- [ ] redis
+- [ ] maptrans
+- [ ] ttp
 
 ## scripts from init
 
@@ -15,9 +19,7 @@ uv init
 uv run ntpy
 ```
 
-## foo
-
-i eight some pi
+## fun
 
 $$
 \sqrt{-1},2^{3},\sum,\pi

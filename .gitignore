@@ -7,6 +7,14 @@ wheels/
 *.egg-info
 
 # Virtual environments
+uv.lock
 .venv
 
+# package
+*.spec
+
+# dataset
 ds/
+
+# output
+output/
