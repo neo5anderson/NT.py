@@ -2,21 +2,27 @@
 
 Neo's Tools of Python in 2025
 
-## plans
+## TODO
 
 - [x] fio
 - [x] calc
 - [x] draw
+- [x] sqlite
+- [x] et: EXIF tools
+- [x] mt: MapXYZ Transfer tool
+- [x] ttp: TIFF to PNG, thread support
+- [x] pgogs: Purge Gogs orphan files
 - [ ] mysql
 - [ ] redis
-- [ ] maptrans
-- [ ] ttp
 
 ## scripts from init
 
 ```sh
 uv init
-uv run ntpy
+# fio, calc, draw basic demo
+uv run demo
+# et
+uv run et
 ```
 
 ## fun

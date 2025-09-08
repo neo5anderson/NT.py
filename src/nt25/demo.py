@@ -1,5 +1,5 @@
 import os
-from nt25 import fio, calc, draw, DType, __version__, __data_path__
+from nt25 import fio, calc, draw, DType, et, __version__, __data_path__
 
 # import timeit
 # timeit.timeit('', number=100, globals=globals())
@@ -70,7 +70,10 @@ def main():
   bar = calc.solveEq(foo['eq'], output=True)
 
   if len(bar) > 0:
-    print(f'solveEq(750, 1.5) ~ {bar[0]['func'](y=[750], x1=1.5):.4f}')
+    print(f'solveEq(750, 1.5) ~ {bar[0]['func'](y=[750], x1=1.5):.4f}\n')
+
+  exif = et.parseExif(__data_path__ + '/exif.jpg')
+  print('exif:', exif)
 
 
 if __name__ == "__main__":

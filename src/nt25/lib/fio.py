@@ -114,3 +114,21 @@ def saveXlsx(data, file, colsInline=True):
       df = df.T
 
     df.to_excel(file, index=False)
+
+
+def ls(path, matcher=None):
+  ls = []
+  append = True
+
+  for root, _, files in os.walk(path):
+    for f in files:
+      p = os.path.join(root, f)
+      s = os.path.getsize(p)
+
+      if matcher:
+        append = matcher(f)
+
+      if append:
+        ls.append((f, p, s))
+
+  return ls

@@ -12,9 +12,16 @@ uv.lock
 
 # package
 *.spec
+scripts/pub.sh
 
 # dataset
 ds/
 
 # output
+out.csv
 output/
+
+# test
+tests/**/*.jpg
+tests/**/*.png
+
