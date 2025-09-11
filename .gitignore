@@ -12,6 +12,7 @@ uv.lock
 
 # package
 *.spec
+scripts/uv
 scripts/pub.sh
 
 # dataset
