@@ -9,8 +9,8 @@ from datetime import UTC, datetime, timedelta, timezone
 from PIL import Image as pi
 from exif import Image, DATETIME_STR_FORMAT
 
-VERSION = '0.2.1'
-MAX_WIDTH = 1080
+VERSION = '0.2.2'
+MAX_WIDTH = 1000
 COMMENT_SEGMENT = b"\xff\xfe"
 EPOCH = datetime.fromtimestamp(0, UTC)
 IMAGE_EXT = ('.jpg', '.jpeg', '.png', '.bmp')
@@ -43,11 +43,11 @@ def optimizeFolder(dir, q=80, mw=MAX_WIDTH):
       _, e = os.path.splitext(file)
       if e.lower() in IMAGE_EXT:
         path = os.path.join(d, file)
-        list.append(path)
 
-        optimizeFile(path)
+        if optimizeFile(path, q=q, mw=mw):
+          list.append(path)
 
-  return 0
+  return len(list)
 
 
 def optimizeFile(file, q=80, mw=MAX_WIDTH):
