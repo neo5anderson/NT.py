@@ -13,7 +13,9 @@ uv.lock
 # package
 *.spec
 scripts/uv
-scripts/pub.sh
+
+dist*.zip
+
 
 # dataset
 ds/

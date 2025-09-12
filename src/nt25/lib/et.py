@@ -4,15 +4,16 @@ import json
 import struct
 import argparse
 
-from PIL import Image as pi
-
 from datetime import UTC, datetime, timedelta, timezone
+
+from PIL import Image as pi
 from exif import Image, DATETIME_STR_FORMAT
 
-VERSION = '0.2.0'
+VERSION = '0.2.1'
 MAX_WIDTH = 1080
 COMMENT_SEGMENT = b"\xff\xfe"
 EPOCH = datetime.fromtimestamp(0, UTC)
+IMAGE_EXT = ('.jpg', '.jpeg', '.png', '.bmp')
 
 
 def dms2dec(dms: tuple):
@@ -34,14 +35,27 @@ def gpsDt2Dt(date, time, offset=8):
   return utc.astimezone(timezone(timedelta(hours=offset)))
 
 
+def optimizeFolder(dir, q=80, mw=MAX_WIDTH):
+  list = []
+
+  for d, _, f in os.walk(dir):
+    for file in f:
+      _, e = os.path.splitext(file)
+      if e.lower() in IMAGE_EXT:
+        path = os.path.join(d, file)
+        list.append(path)
+
+        optimizeFile(path)
+
+  return 0
+
+
 def optimizeFile(file, q=80, mw=MAX_WIDTH):
   less = False
 
   if not os.path.exists(file):
-    print("bad file:" + file)
+    print("not found:", file)
     return less
-
-  ofile = file + '.jpg'
 
   img = pi.open(file)
   w, h = img.size
@@ -53,7 +67,16 @@ def optimizeFile(file, q=80, mw=MAX_WIDTH):
     h = int(scale * h)
     img = img.resize((w, h))
 
-  img.save(ofile, quality=q, optimize=True, progression=True)
+  _, e = os.path.splitext(file)
+  if img.mode == 'RGB':
+    e = '.jpg'
+
+  ofile = file + e.lower()
+
+  if e == '.png':
+    img.save(ofile, optimize=True, compress_level=9)
+  else:
+    img.save(ofile, quality=q, optimize=True, progression=True)
 
   if os.path.getsize(ofile) < os.path.getsize(file) * 0.8:
     less = True
@@ -175,7 +198,7 @@ class InvalidImageDataError(ValueError):
 
 def genSegments(data):
   if data[0:2] != b"\xff\xd8":
-    raise InvalidImageDataError("Given data isn't JPEG.")
+    return []
 
   head = 2
   segments = [b"\xff\xd8"]
@@ -200,19 +223,22 @@ def genSegments(data):
 
 def setComment(segments, comment: str, enc='utf-8'):
   contains = False
-  cb = comment.encode(enc)
-  length = len(cb) + 2
 
-  cbSeg = COMMENT_SEGMENT + length.to_bytes(2, byteorder='big') + cb
+  if len(segments) > 1:
+    cb = comment.encode(enc)
+    length = len(cb) + 2
 
-  for i in range(len(segments)):
-    if segments[i][0:2] == COMMENT_SEGMENT:
-      contains = True
-      segments[i] = cbSeg
+    cbSeg = COMMENT_SEGMENT + length.to_bytes(2, byteorder='big') + cb
 
-  if not contains:
-    length = len(segments)
-    segments.insert(1 if length == 2 else length - 2, cbSeg)
+    for i in range(len(segments)):
+      if segments[i][0:2] == COMMENT_SEGMENT:
+        segments[i] = cbSeg
+        contains = True
+        break
+
+    if not contains:
+      length = len(segments)
+      segments.insert(1 if length == 2 else length - 2, cbSeg)
 
   return segments
 
@@ -234,32 +260,33 @@ def getExif(segments):
 
 
 def mergeSegments(segments, exif=b""):
-  if segments[1][0:2] == b"\xff\xe0" and \
-     segments[2][0:2] == b"\xff\xe1" and \
-     segments[2][4:10] == b"Exif\x00\x00":
-    if exif:
-      segments[2] = exif
-      segments.pop(1)
-    elif exif is None:
-      segments.pop(2)
+  if len(segments) > 1:
+    if segments[1][0:2] == b"\xff\xe0" and \
+            segments[2][0:2] == b"\xff\xe1" and \
+            segments[2][4:10] == b"Exif\x00\x00":
+      if exif:
+        segments[2] = exif
+        segments.pop(1)
+      elif exif is None:
+        segments.pop(2)
+      else:
+        segments.pop(1)
+
+    elif segments[1][0:2] == b"\xff\xe0":
+      if exif:
+        segments[1] = exif
+
+    elif (segments[1][0:2] == b"\xff\xe1" and
+          segments[1][4:10] == b"Exif\x00\x00"):
+
+      if exif:
+        segments[1] = exif
+      elif exif is None:
+        segments.pop(1)
+
     else:
-      segments.pop(1)
-
-  elif segments[1][0:2] == b"\xff\xe0":
-    if exif:
-      segments[1] = exif
-
-  elif (segments[1][0:2] == b"\xff\xe1" and
-        segments[1][4:10] == b"Exif\x00\x00"):
-
-    if exif:
-      segments[1] = exif
-    elif exif is None:
-      segments.pop(1)
-
-  else:
-    if exif:
-      segments.insert(1, exif)
+      if exif:
+        segments.insert(1, exif)
 
   return b"".join(segments)
 
@@ -273,23 +300,23 @@ def removeExif(file, optimize=False):
     optimizeFile(file)
 
   with open(file, 'rb') as f:
-    src_data = f.read()
+    data = f.read()
 
-  segments = genSegments(src_data)
+  segments = genSegments(data)
   segments = list(filter(lambda seg: not (seg[0:2] == b"\xff\xe1"
                                           and seg[4:10] == b"Exif\x00\x00"),
                          segments))
 
   segments = setComment(segments, "nt25.et")
-  new_data = b"".join(segments)
+  data = b"".join(segments)
 
   with open(file, "wb+") as f:
-    f.write(new_data)
+    f.write(data)
 
 
 def transplant(src, dst, optimize=False):
   if not os.path.exists(src) or not os.path.exists(dst):
-    print(f'bad file: {src}, {dst}')
+    print(f'not found: {src}, {dst}')
     return
 
   if optimize:
@@ -305,11 +332,13 @@ def transplant(src, dst, optimize=False):
     d = f.read()
 
   segments = genSegments(d)
-  segments = setComment(segments, "nt25.et")
-  d = mergeSegments(segments, exif)
 
-  with open(dst, "wb+") as f:
-    f.write(d)
+  if len(segments) > 1:
+    segments = setComment(segments, "nt25.et")
+    d = mergeSegments(segments, exif)
+
+    with open(dst, "wb+") as f:
+      f.write(d)
 
 
 def main():
@@ -328,7 +357,7 @@ def main():
   parser.add_argument('-m', '--max', type=int, default=MAX_WIDTH,
                       help='set max width when shrink file')
   parser.add_argument('-s', '--shrink', type=str,
-                      help=f'shrink file with max width {MAX_WIDTH}')
+                      help=f'shrink file/folder with max width {MAX_WIDTH}')
 
   args = parser.parse_args()
 
@@ -337,10 +366,17 @@ def main():
     return
 
   if args.shrink is not None:
-    r = optimizeFile(args.shrink, mw=args.max)
+    if os.path.isfile(args.shrink):
+      r = optimizeFile(args.shrink, mw=args.max)
+    elif os.path.isdir(args.shrink):
+      r = optimizeFolder(args.shrink, mw=args.max)
+    else:
+      r = 404
+
     print(f'{{"less": {r} }}')
     return
-  elif args.file is None:
+
+  if args.file is None:
     print('usage: et [-h] [-v] [-o] [-f FILE] [-d -f FILE]\n'
           '\t\t[-r -f FILE] [-c SRC -f DST]\n'
           '\t\t[[-m MAX] -s FILE]')
